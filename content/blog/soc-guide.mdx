@@ -1,0 +1,71 @@
+---
+title: "SOC Analyst Guide: Triaging Alerts Effectively"
+description: "A practical field guide to triaging security alerts in a SOC environment — from log correlation to escalation decisions."
+date: "2024-09-10"
+tags: ["cybersecurity", "SOC", "blue-team", "incident-response"]
+---
+
+# SOC Analyst Guide: Triaging Alerts Effectively
+
+Working in a Security Operations Center means handling hundreds of alerts daily. Most are noise. A few are critical. The skill is telling the difference — fast.
+
+## The Triage Mindset
+
+Before touching a tool, internalize this framework:
+
+> **Context beats indicators.** An IP address means nothing alone. The same IP in context of a privileged account accessing finance systems at 3 AM means everything.
+
+## Step 1: Classify the Alert
+
+When an alert fires, immediately categorize it:
+
+| Category | Example | Priority |
+|----------|---------|----------|
+| Malware | Endpoint AV detection | High |
+| Intrusion | Failed SSH from foreign IP | Medium |
+| Insider | Data exfiltration attempt | Critical |
+| Compliance | Unencrypted PII in logs | Medium |
+
+## Step 2: Gather Context
+
+Run these checks before escalating:
+
+```bash
+# Check IP reputation
+curl -s "https://api.abuseipdb.com/api/v2/check?ipAddress={IP}" \
+  -H "Key: YOUR_API_KEY"
+
+# Pull recent auth events for a user
+grep "username" /var/log/auth.log | tail -50
+```
+
+## Step 3: The Escalation Decision Matrix
+
+Ask yourself:
+
+1. Is this **active**? (ongoing vs past)
+2. Is a **privileged account** involved?
+3. Is there **lateral movement** evidence?
+4. Is **data leaving** the network?
+
+If 2+ answers are "yes" → escalate immediately.
+
+## Common False Positive Patterns
+
+- **Business travel** triggering geo-anomaly alerts
+- **Vulnerability scanners** running overnight
+- **Automated backup jobs** spiking network traffic
+- **Dev environments** running pentest tools
+
+## Tools I Recommend
+
+- **Splunk/ELK** for log aggregation
+- **VirusTotal API** for hash lookups
+- **Shodan** for passive recon on suspicious IPs
+- **MITRE ATT&CK Navigator** for TTPs mapping
+
+## Closing Thoughts
+
+Effective triage is 80% process and 20% tools. Build your playbooks, document everything, and review false positives weekly to tune your detections.
+
+Your future self will thank you.

